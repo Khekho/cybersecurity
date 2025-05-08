@@ -1,28 +1,64 @@
 #include <stdio.h>
-#include <stdint.h>
-uint32_t P[2] = {0x243F6A88, 0x85A308D3}; 
-uint32_t F(uint32_t x) {
-    return (x ^ 0xA5A5A5A5);
+#include <string.h>
+
+int modInverse(int a, int m) {
+    for (int x = 1; x < m; x++)
+        if ((a * x) % m == 1)
+            return x;
+    return -1;
 }
-void encrypt(uint32_t *L, uint32_t *R) {
-    *L ^= P[0];
-    *R ^= F(*L);
-    *L ^= P[1];
-    *R ^= F(*L);
-}
-void decrypt(uint32_t *L, uint32_t *R) {
-    *R ^= F(*L);
-    *L ^= P[1];
-    *R ^= F(*L);
-    *L ^= P[0];
-}
+
 int main() {
-    uint32_t L = 0x12345678;
-    uint32_t R = 0x9abcdef0;
-    printf("Original:   %08x %08x\n", L, R);
-    encrypt(&L, &R);
-    printf("Encrypted:  %08x %08x\n", L, R);
-    decrypt(&L, &R);
-    printf("Decrypted:  %08x %08x\n", L, R);
+    char text[100];
+    int choice;
+    int x1 = 4, x2 = 19, y1 = 1, y2 = 20;
+    int a = -1, b, a_inv;
+    int x, y;
+
+    printf("Choose an option:\n1. Encrypt\n2. Decrypt\nEnter your choice: ");
+    scanf("%d", &choice);
+    printf("Enter text (UPPERCASE letters only): ");
+    scanf("%s", text);
+
+    // Find 'a' such that it satisfies affine constraints
+    for (int i = 1; i < 26; i++) {
+        if ((i * ((x1 - x2 + 26) % 26)) % 26 == (y1 - y2 + 26) % 26) {
+            a = i;
+            break;
+        }
+    }
+
+    if (a == -1) {
+        printf("No valid 'a' found for the given points.\n");
+        return 1;
+    }
+
+    b = (y1 - a * x1 + 26 * 26) % 26;
+    a_inv = modInverse(a, 26);
+
+    if (a_inv == -1 && choice == 2) {
+        printf("No modular inverse exists for a = %d under mod 26.\n", a);
+        return 1;
+    }
+
+    printf("%s text: ", (choice == 1) ? "Encrypted" : "Decrypted");
+
+    for (int i = 0; text[i] != '\0'; i++) {
+        if (text[i] >= 'A' && text[i] <= 'Z') {
+            if (choice == 1) { // Encrypt
+                x = text[i] - 'A';
+                y = (a * x + b) % 26;
+                printf("%c", y + 'A');
+            } else if (choice == 2) { // Decrypt
+                y = text[i] - 'A';
+                x = (a_inv * (y - b + 26)) % 26;
+                printf("%c", x + 'A');
+            }
+        } else {
+            printf("%c", text[i]);
+        }
+    }
+
+    printf("\n");
     return 0;
 }
